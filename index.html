@@ -1,0 +1,67 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+        <title>TUX MESSAGER</title>
+    </head>
+    <body>
+        <center><h1>TUX MESSAGER</h1></center><br>
+        <center><div style="width: 95vw">
+            TUX messages use OP_RETURN (0x6a) to create data only transactions, these are also prefixed with 0xfeab to prevent collisions with other OP_RETURN transactions. Messages seen here are
+	part of the blockchain and can be viewn by anyone with the TXID of that message or with this page open. TUX MESSAGER replies on the node package 'insight-tux-node'. See this Github for more details.
+	
+        </div></center><br>
+<center> <textarea id="log" rows="10" style="width: 95vw; white-space: pre;overflow-wrap: normal;overflow-x: scroll;" class="form-control" wrap="soft" disabled></textarea></center>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+        <script>
+            var eventToListenTo = 'tx';
+            var room = 'inv';
+            function hex2a(hexx) {
+                var hex = hexx.toString();//force conversion
+                var str = '';
+                for (var i = 0; (i < hex.length && hex.substr(i, 2) !== '00'); i += 2)
+                    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+                return str;
+            }
+
+
+                var log_container = document.getElementById("log");
+                var log = function log(msg){
+                    log_container.append(moment().format('h:mm:ss : '));
+                    log_container.append(msg + '\n');
+                    if(log_container.length){
+                        log_container.scrollTop(log_container[0].scrollHeight - log_container.height());
+                    }
+                }
+
+
+            var socket = io("47.187.209.186:3001"); //or wherever you run your insight-tux-api from
+            socket.on('connect', function() {
+            // Join the room.
+            socket.emit('subscribe', room);
+            })
+            socket.on(eventToListenTo, function(data) {
+            console.log("New transaction received: " + JSON.stringify(data));
+            $.ajax('http://47.187.209.186:3001/insight-tux-api/tx/' + data.txid, { //or wherever you run your insight-tux-api from
+                success: function(data) {
+                    data.vout.forEach(function(vout) {
+                        if(!vout.scriptPubKey) {
+                            return;
+                        }
+
+                        if(!vout.scriptPubKey.hex.indexOf('6a') && vout.scriptPubKey.hex.indexOf('feab') === 4){
+                            var text = hex2a(vout.scriptPubKey.hex.substring(8));
+                            /* var item = $('<span>').text(text);
+                            $('#messages').append(item); */
+				log(text);
+                        }
+                    });
+                }
+            })
+            })
+        </script>
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    </body>
+</html>
